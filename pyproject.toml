@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+[project]
+name = "ssvtools"
+dynamic = ["version"]
+keywords = ["Medical", "Physiology", "Anatomical", "Mesh", "Finite Element", "SPARC", "Vagus", "Nerve"]
+readme = "README.rst"
+license = "Apache-2.0"
+authors = [
+    { name="Richard Christie", email="r.christie@auckland.ac.nz" },
+]
+dependencies = [
+    "cmlibs.maths >= 0.7.2",
+    "cmlibs.utils >= 0.12.5",
+    "cmlibs.zinc >= 4.2.1"
+]
+description = "Python Utilities for extracting information form SPARC Subject-Specific Vagus Scaffolds using Zinc."
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools_scm]
