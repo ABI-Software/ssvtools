@@ -1,6 +1,7 @@
 from cmlibs.zinc.context import Context
 from cmlibs.zinc.result import RESULT_OK
-from ssvtools.query_structure import evaluate_branch_start_coordinates, get_marker_data, get_vagus_structure_maps
+from ssvtools.query_structure import evaluate_branch_start_coordinates, get_marker_data, get_vagus_structure_maps, \
+    get_in_body_coordinates, get_vagus_trunk_group
 from testutils import assertAlmostEqualList
 import os
 import unittest
@@ -90,6 +91,103 @@ class SSVToolsTestCase(unittest.TestCase):
             assertAlmostEqualList(self, marker_location[1], expected_marker_location[1], TOL)
             assertAlmostEqualList(self, marker_vagus_coordinates, expected_marker_vagus_coordinates, TOL)
             assertAlmostEqualList(self, marker_straight_coordinates, expected_marker_straight_coordinates, STOL)
+
+    def test_straight_to_geometeric(self):
+        """
+        Get in-body coordinates from a test subject-specific-vagus SSV. Uses the straight coordinates of a simple
+        test scaffold to test that we can derive its in-body coordinates by using its geometric coordinates as a
+        template. Uses a simple test scaffold, but any vagus scaffold output by SPARC Mapping Tools
+        Scaffold Creator, including from REVA data should work.
+        """
+        data_file_path = os.path.join(here, "resources", "vagus_test_scaffold2.exf")
+        unit_conversion_factor = 1.0
+        trunk_group_name = "left vagus nerve"
+        context = Context("Test")
+        region = context.getDefaultRegion()
+        self.assertEqual(RESULT_OK, region.readFile(data_file_path))
+        coordinates_field_name = "straight coordinates"
+
+        tmp_region = region.createRegion()
+        self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
+        tmp_coordinates_field_name = "coordinates"
+
+        get_in_body_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+                                trunk_group_name, unit_conversion_factor)
+
+        fieldmodule = region.getFieldmodule()
+        coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
+        structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
+        vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
+        vagus_trunk_group_name = vagus_trunk_group.getName()
+        trunk_branch_list = structure_map[vagus_trunk_group_name][1]
+        branch_start_data = evaluate_branch_start_coordinates(coordinates_field, trunk_branch_list)
+
+        expected_branch_start_data = \
+            [('left A thoracic cardiopulmonary branch of vagus nerve',
+              [20634.120683488825, -2944.004924651978, -607.5696033124909],
+              [0.12154289010842992, -0.991965352443111, -0.03510078940002286]),
+             ('left B thoracic cardiopulmonary branch of vagus nerve',
+              [22162.280655185015, -3220.675195455796, -620.2280737048401],
+              [0.745038339616544, 0.6554829330426539, -0.12353136035526695]),
+             ('left superior laryngeal nerve',
+              [5920.212115709108, -4451.343990141128, -195.1399035291793],
+              [-0.8473499926574223, 0.5303662891748604, -0.026638116494129567])]
+
+        TOL = 1.0E-8
+        for i in range(len(expected_branch_start_data)):
+            expected_branch_name, expected_start_x, expected_direction = expected_branch_start_data[i]
+            branch_name, start_x, direction = branch_start_data[i]
+            self.assertEqual(branch_name, expected_branch_name)
+            assertAlmostEqualList(self, start_x, expected_start_x, TOL)
+            assertAlmostEqualList(self, direction, expected_direction, TOL)
+
+    def test_geometric_to_straight(self):
+        """
+        Get in-body coordinates from a test subject-specific-vagus SSV. Uses the geometric coordinates of a simple
+        test scaffold to test that we can derive its in-body coordinates by using its straight coordinates as a
+        template. Uses a simple test scaffold, but any vagus scaffold output by SPARC Mapping Tools
+        Scaffold Creator, including from REVA data should work.
+        """
+        data_file_path = os.path.join(here, "resources", "vagus_test_scaffold2.exf")
+        unit_conversion_factor = 1.0
+        trunk_group_name = "left vagus nerve"
+        context = Context("Test")
+        region = context.getDefaultRegion()
+        self.assertEqual(RESULT_OK, region.readFile(data_file_path))
+        coordinates_field_name = "coordinates"
+
+        tmp_region = region.createRegion()
+        self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
+        tmp_coordinates_field_name = "straight coordinates"
+
+        get_in_body_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+                                trunk_group_name, unit_conversion_factor)
+
+        fieldmodule = region.getFieldmodule()
+        coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
+        structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
+        vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
+        vagus_trunk_group_name = vagus_trunk_group.getName()
+        trunk_branch_list = structure_map[vagus_trunk_group_name][1]
+        branch_start_data = evaluate_branch_start_coordinates(coordinates_field, trunk_branch_list)
+
+        expected_branch_start_data = \
+            [('left A thoracic cardiopulmonary branch of vagus nerve',
+              [-11.45383123306604, 0.0460213549359878, 23760.81526778722],
+              [-0.8911592295745064, 0.3595643866556701, 0.27667432008248216]), (
+             'left B thoracic cardiopulmonary branch of vagus nerve',
+             [28.717851549325317, -49.12639133068478, 25311.09739308472],
+             [0.5396844040608685, -0.6365649410327443, 0.5509317742347449]), (
+             'left superior laryngeal nerve', [48.662910967439345, 19.24981714139657, 8593.065332472212],
+             [0.7448771174335442, 0.6376438813821199, -0.19638829002727917])]
+
+        TOL = 1.0E-8
+        for i in range(len(expected_branch_start_data)):
+            expected_branch_name, expected_start_x, expected_direction = expected_branch_start_data[i]
+            branch_name, start_x, direction = branch_start_data[i]
+            self.assertEqual(branch_name, expected_branch_name)
+            assertAlmostEqualList(self, start_x, expected_start_x, TOL)
+            assertAlmostEqualList(self, direction, expected_direction, TOL)
 
 
 if __name__ == "__main__":
