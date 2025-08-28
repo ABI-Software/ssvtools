@@ -3,8 +3,9 @@ Utility functions for querying structure of SPARC subject-specific nerve scaffol
 including trunk information, branch positions and orientations, and level marker locations.
 """
 import logging
-import re
+import math
 import os
+import re
 
 from cmlibs.maths.vectorops import normalize, cross, add, mult, magnitude, set_magnitude
 from cmlibs.utils.zinc.field import get_group_list
@@ -186,7 +187,7 @@ def get_marker_data(fieldmodule, host_coordinate_field=None):
 
 
 def get_in_body_coordinates(region, coordinate_field_name, template_region, template_coordinate_field_name,
-                            trunk_group_name, unit_conversion_factor=1.0):
+                            trunk_group_name, unit_conversion_factor):
     """
     Get in-body coordinates for a subject-specific vagus (SSV) scaffold using a template vagus scaffold derived from
     the 3D whole body. For this to work, the SSV vagus trunk needs to have the same number of elements along the trunk
@@ -202,7 +203,8 @@ def get_in_body_coordinates(region, coordinate_field_name, template_region, temp
     :param template_region: template region where the template vagus scaffold is loaded.
     :param template_coordinate_field_name: name of the coordinate field for template vagus scaffold.
     :param trunk_group_name: name of trunk group.
-    :param unit_conversion_factor: Factor to bring SSV into the same scale as template scaffold.    
+    :param unit_conversion_factor: Factor to bring SSV into the same scale as template scaffold. If none, mesh integral
+    of the respective trunk lengths will be used to calculate the required scale factor.
     """
     fieldmodule = region.getFieldmodule()
     mesh3d = fieldmodule.findMeshByDimension(3)
@@ -247,10 +249,10 @@ def get_in_body_coordinates(region, coordinate_field_name, template_region, temp
             _, bd3 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1, 3)
             _, bd12 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
             _, bd13 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
-            bd2_mag_list.append(magnitude(bd2) * unit_conversion_factor)
-            bd3_mag_list.append(magnitude(bd3) * unit_conversion_factor)
-            bd12_mag_list.append(magnitude(bd12) * unit_conversion_factor)
-            bd13_mag_list.append(magnitude(bd13) * unit_conversion_factor)
+            bd2_mag_list.append(magnitude(bd2))
+            bd3_mag_list.append(magnitude(bd3))
+            bd12_mag_list.append(magnitude(bd12))
+            bd13_mag_list.append(magnitude(bd13))
         element = elem_iter.next()
         element_id = element.getIdentifier()
 
@@ -260,6 +262,11 @@ def get_in_body_coordinates(region, coordinate_field_name, template_region, temp
     sir.setResourceDomainTypes(srm, Field.DOMAIN_TYPE_NODES)
     sir.setResourceGroupName(srm, trunk_group_name)
     sir.setResourceFieldNames(srm, template_coordinate_field_name)
+    if unit_conversion_factor is None:
+        template_coordinates_field = template_fieldmodule.findFieldByName(
+            template_coordinate_field_name).castFiniteElement()
+        unit_conversion_factor = getUnitConversionFactor(trunk_group_name, fieldmodule, coordinates_field,
+                                                         template_fieldmodule, template_coordinates_field)
     template_region.write(sir)
     result, buffer = srm.getBuffer()
     sir = region.createStreaminformationRegion()
@@ -301,13 +308,13 @@ def get_in_body_coordinates(region, coordinate_field_name, template_region, temp
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_VALUE, 1, bx)
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS1, 1, bd1)
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS2, 1,
-                                                    set_magnitude(bd2, bd2_mag_list[count]))
+                                                    set_magnitude(bd2, unit_conversion_factor * bd2_mag_list[count]))
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1,
-                                                    set_magnitude(bd3, bd3_mag_list[count]))
+                                                    set_magnitude(bd3, unit_conversion_factor * bd3_mag_list[count]))
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1,
-                                                        set_magnitude(bd12, bd12_mag_list[count]))
+                                                    set_magnitude(bd12, unit_conversion_factor * bd12_mag_list[count]))
                 coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1,
-                                                        set_magnitude(bd13, bd13_mag_list[count]))
+                                                    set_magnitude(bd13, unit_conversion_factor * bd13_mag_list[count]))
                 count += 1
         else:  # Make branches radiating from template trunk
             local_nodes_count = eft.getNumberOfLocalNodes()
@@ -348,3 +355,55 @@ def get_in_body_coordinates(region, coordinate_field_name, template_region, temp
 
         element = elem_iter.next()
         element_id = element.getIdentifier()
+
+
+def getUnitConversionFactor(trunk_group_name, fieldmodule, coordinates_field, template_fieldmodule,
+                            template_coordinates_field):
+    """
+    Derive a unit conversion factor by calculating the scale difference between the length of the SSV scaffold and the
+    template trunk length.
+    """
+    trunk_group = fieldmodule.findFieldByName(trunk_group_name).castGroup()
+    centroid_group = fieldmodule.findFieldByName("vagus centroid").castGroup()
+    mesh = create_intersection_mesh_group(trunk_group, centroid_group, dimension=1)
+    SSV_trunk_length = get_mesh_integral_one(mesh, coordinates_field)
+
+    trunk_group = template_fieldmodule.findFieldByName(trunk_group_name).castGroup()
+    centroid_group = template_fieldmodule.findFieldByName("vagus centroid").castGroup()
+    mesh = create_intersection_mesh_group(trunk_group, centroid_group, dimension=1)
+    template_trunk_length = get_mesh_integral_one(mesh, template_coordinates_field)
+
+    if SSV_trunk_length <= 0 or template_trunk_length <= 0:
+        raise ValueError("Values must be positive")
+
+    log_diff = math.log10(SSV_trunk_length) - math.log10(template_trunk_length)
+    scale_power = round(log_diff)
+    unit_conversion_factor = 1.0 / (10 ** scale_power)
+
+    return unit_conversion_factor
+
+def create_intersection_mesh_group(group1, group2, dimension):
+    """
+    Create a mesh group which is an intersection between group1 and group2.
+    """
+    fieldmodule = group1.getFieldmodule()
+    with ChangeManager(fieldmodule):
+        group = fieldmodule.createFieldGroup()
+        mesh = fieldmodule.findMeshByDimension(dimension)
+        mesh_group = group.createMeshGroup(mesh)
+        mesh_group.addElementsConditional(fieldmodule.createFieldAnd(group1, group2))
+    return mesh_group
+
+def get_mesh_integral_one(mesh, coordinates, number_of_points=4):
+    """
+    Calculate the length of a mesh using meshIntegral.
+    """
+    fieldmodule = mesh.getFieldmodule()
+    with ChangeManager(fieldmodule):
+        mesh_integral = \
+            fieldmodule.createFieldMeshIntegral(fieldmodule.createFieldConstant(1.0), coordinates, mesh)
+        mesh_integral.setNumbersOfPoints([number_of_points])
+        fieldcache = fieldmodule.createFieldcache()
+        result, value = mesh_integral.evaluateReal(fieldcache, 1)
+        del mesh_integral
+    return value

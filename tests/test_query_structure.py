@@ -92,7 +92,7 @@ class SSVToolsTestCase(unittest.TestCase):
             assertAlmostEqualList(self, marker_vagus_coordinates, expected_marker_vagus_coordinates, TOL)
             assertAlmostEqualList(self, marker_straight_coordinates, expected_marker_straight_coordinates, STOL)
 
-    def test_straight_to_geometeric(self):
+    def test_straight_to_geometric(self):
         """
         Get in-body coordinates from a test subject-specific-vagus SSV. Uses the straight coordinates of a simple
         test scaffold to test that we can derive its in-body coordinates by using its geometric coordinates as a
@@ -149,7 +149,7 @@ class SSVToolsTestCase(unittest.TestCase):
         Scaffold Creator, including from REVA data should work.
         """
         data_file_path = os.path.join(here, "resources", "vagus_test_scaffold2.exf")
-        unit_conversion_factor = 1.0
+        unit_conversion_factor = None
         trunk_group_name = "left vagus nerve"
         context = Context("Test")
         region = context.getDefaultRegion()
