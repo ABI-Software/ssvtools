@@ -4,8 +4,6 @@ including adopting template trunk coordinates.
 """
 import logging
 import math
-import os
-import re
 
 from cmlibs.maths.vectorops import normalize, cross, add, mult, magnitude, set_magnitude
 from cmlibs.utils.zinc.general import ChangeManager
