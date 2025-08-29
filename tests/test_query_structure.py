@@ -1,7 +1,8 @@
 from cmlibs.zinc.context import Context
 from cmlibs.zinc.result import RESULT_OK
+from ssvtools.modify_coordinates import adopt_template_trunk_coordinates
 from ssvtools.query_structure import evaluate_branch_start_coordinates, get_marker_data, get_vagus_structure_maps, \
-    get_in_body_coordinates, get_vagus_trunk_group
+    get_vagus_trunk_group
 from testutils import assertAlmostEqualList
 import os
 import unittest
@@ -94,10 +95,9 @@ class SSVToolsTestCase(unittest.TestCase):
 
     def test_straight_to_geometric(self):
         """
-        Get in-body coordinates from a test subject-specific-vagus SSV. Uses the straight coordinates of a simple
-        test scaffold to test that we can derive its in-body coordinates by using its geometric coordinates as a
-        template. Uses a simple test scaffold, but any vagus scaffold output by SPARC Mapping Tools
-        Scaffold Creator, including from REVA data should work.
+        Modify the straight coordinates from a test subject-specific-vagus (SSV) by adopting its geometric coordinates
+        along the trunk. Uses a simple test scaffold, but any vagus scaffold output by SPARC Mapping Tools Scaffold
+        Creator, including from REVA data should work.
         """
         data_file_path = os.path.join(here, "resources", "vagus_test_scaffold2.exf")
         unit_conversion_factor = 1.0
@@ -111,8 +111,8 @@ class SSVToolsTestCase(unittest.TestCase):
         self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
         tmp_coordinates_field_name = "coordinates"
 
-        get_in_body_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
-                                trunk_group_name, unit_conversion_factor)
+        adopt_template_trunk_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+                                         trunk_group_name, unit_conversion_factor)
 
         fieldmodule = region.getFieldmodule()
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
@@ -143,10 +143,9 @@ class SSVToolsTestCase(unittest.TestCase):
 
     def test_geometric_to_straight(self):
         """
-        Get in-body coordinates from a test subject-specific-vagus SSV. Uses the geometric coordinates of a simple
-        test scaffold to test that we can derive its in-body coordinates by using its straight coordinates as a
-        template. Uses a simple test scaffold, but any vagus scaffold output by SPARC Mapping Tools
-        Scaffold Creator, including from REVA data should work.
+        Modify the geometric coordinates from a test subject-specific-vagus (SSV) by adopting its straight coordinates
+        along the trunk. Also, used None for unit_conversion_factor in this test case. Uses a simple test scaffold, but
+        any vagus scaffold output by SPARC Mapping Tools Scaffold Creator, including from REVA data should work.
         """
         data_file_path = os.path.join(here, "resources", "vagus_test_scaffold2.exf")
         unit_conversion_factor = None
@@ -160,8 +159,8 @@ class SSVToolsTestCase(unittest.TestCase):
         self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
         tmp_coordinates_field_name = "straight coordinates"
 
-        get_in_body_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
-                                trunk_group_name, unit_conversion_factor)
+        adopt_template_trunk_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+                                         trunk_group_name, unit_conversion_factor)
 
         fieldmodule = region.getFieldmodule()
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
