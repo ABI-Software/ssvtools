@@ -5,7 +5,7 @@ including adopting template trunk coordinates.
 import logging
 import math
 
-from cmlibs.maths.vectorops import normalize, cross, add, mult, magnitude, set_magnitude
+from cmlibs.maths.vectorops import normalize, cross, add, mult, magnitude, set_magnitude, dot
 from cmlibs.utils.zinc.general import ChangeManager
 from cmlibs.zinc.field import Field
 from cmlibs.zinc.node import Node
@@ -90,10 +90,13 @@ def adopt_template_trunk_coordinates(region, coordinates_field, template_region,
             _, bd3 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1, 3)
             _, bd12 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
             _, bd13 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
+
+            bd12_signed_mag = dot(bd12, normalize(bd2))
+            bd13_signed_mag = dot(bd13, normalize(bd3))
             bd2_mag_list.append(magnitude(bd2))
             bd3_mag_list.append(magnitude(bd3))
-            bd12_mag_list.append(magnitude(bd12))
-            bd13_mag_list.append(magnitude(bd13))
+            bd12_mag_list.append(bd12_signed_mag)
+            bd13_mag_list.append(bd13_signed_mag)
         element = elem_iter.next()
         element_id = element.getIdentifier()
 
@@ -149,6 +152,8 @@ def adopt_template_trunk_coordinates(region, coordinates_field, template_region,
                                                                            Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
 
                     node = element.getNode(eft, ln[i])
+                    d12 = mult(normalize(bd2), unit_conversion_factor * bd12_mag_list[count])
+                    d13 = mult(normalize(bd3), unit_conversion_factor * bd13_mag_list[count])
                     fieldcache.setNode(node)
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_VALUE, 1, bx)
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS1, 1, bd1)
@@ -158,12 +163,8 @@ def adopt_template_trunk_coordinates(region, coordinates_field, template_region,
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1,
                                                         set_magnitude(bd3, unit_conversion_factor *
                                                                       bd3_mag_list[count]))
-                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1,
-                                                        set_magnitude(bd12, unit_conversion_factor *
-                                                                      bd12_mag_list[count]))
-                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1,
-                                                        set_magnitude(bd13, unit_conversion_factor *
-                                                                      bd13_mag_list[count]))
+                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, d12)
+                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, d13)
                     count += 1
             else:  # Make branches radiating from template trunk
                 local_nodes_count = eft.getNumberOfLocalNodes()

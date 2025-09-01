@@ -118,6 +118,7 @@ class SSVToolsTestCase(unittest.TestCase):
         adopt_template_trunk_coordinates(region, coordinates_field, template_region, template_coordinates_field,
                                          trunk_group_name, unit_conversion_factor)
 
+        # region.writeFile('straight_to_geometric.exf')
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
         structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
         vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
@@ -127,14 +128,13 @@ class SSVToolsTestCase(unittest.TestCase):
 
         expected_branch_start_data = \
             [('left A thoracic cardiopulmonary branch of vagus nerve',
-              [20634.120683488825, -2944.004924651978, -607.5696033124909],
-              [0.12154289010842992, -0.991965352443111, -0.03510078940002286]),
+              [20634.120654634753, -2944.00512888507, -607.5696487203066],
+              [0.12153923672191891, -0.9919656891879115, -0.035103923014460706]),
              ('left B thoracic cardiopulmonary branch of vagus nerve',
-              [22162.280655185015, -3220.675195455796, -620.2280737048401],
-              [0.745038339616544, 0.6554829330426539, -0.12353136035526695]),
-             ('left superior laryngeal nerve',
-              [5920.212115709108, -4451.343990141128, -195.1399035291793],
-              [-0.8473499926574223, 0.5303662891748604, -0.026638116494129567])]
+              [22162.25852383412, -3220.7718823220207, -620.3932944321155],
+              [0.7452977441582963, 0.6546665028595009, -0.12626576173399476]),
+             ('left superior laryngeal nerve', [5920.133012880977, -4451.293552269674, -195.3146602807042],
+              [-0.8472154614382229, 0.5304071806950975, -0.029902919039740395])]
 
         TOL = 1.0E-8
         for i in range(len(expected_branch_start_data)):
@@ -170,6 +170,7 @@ class SSVToolsTestCase(unittest.TestCase):
         adopt_template_trunk_coordinates(region, coordinates_field, template_region, template_coordinates_field,
                                          trunk_group_name, unit_conversion_factor)
 
+        # region.writeFile('geometric_to_straight.exf')
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
         structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
         vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
@@ -179,13 +180,13 @@ class SSVToolsTestCase(unittest.TestCase):
 
         expected_branch_start_data = \
             [('left A thoracic cardiopulmonary branch of vagus nerve',
-              [-11.45383123306604, 0.0460213549359878, 23760.81526778722],
-              [-0.8911592295745064, 0.3595643866556701, 0.27667432008248216]), (
+              [-11.396312835632429, 0.046011947444071666, 23760.81526778722],
+              [-0.8902562546591324, 0.36093917883438575, 0.27778896706430495]), (
              'left B thoracic cardiopulmonary branch of vagus nerve',
-             [28.717851549325317, -49.12639133068478, 25311.09739308472],
-             [0.5396844040608685, -0.6365649410327443, 0.5509317742347449]), (
-             'left superior laryngeal nerve', [48.662910967439345, 19.24981714139657, 8593.065332472212],
-             [0.7448771174335442, 0.6376438813821199, -0.19638829002727917])]
+             [29.374459368699924, -51.59767903274964, 25311.09739308472],
+             [0.5373745137850673, -0.6508445619590075, 0.536311465570754]), (
+             'left superior laryngeal nerve', [46.79098252744873, 18.715786185700324, 8593.065332472212],
+             [0.7403494295872118, 0.6408371734692249, -0.20300354482093294])]
 
         TOL = 1.0E-8
         for i in range(len(expected_branch_start_data)):
