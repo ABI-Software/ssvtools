@@ -104,17 +104,20 @@ class SSVToolsTestCase(unittest.TestCase):
         trunk_group_name = "left vagus nerve"
         context = Context("Test")
         region = context.getDefaultRegion()
+        fieldmodule = region.getFieldmodule()
         self.assertEqual(RESULT_OK, region.readFile(data_file_path))
         coordinates_field_name = "straight coordinates"
+        coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
 
-        tmp_region = region.createRegion()
-        self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
-        tmp_coordinates_field_name = "coordinates"
+        template_region = region.createRegion()
+        template_fieldmodule = template_region.getFieldmodule()
+        self.assertEqual(RESULT_OK, template_region.readFile(data_file_path))
+        template_coordinates_field_name = "coordinates"
+        template_coordinates_field = template_fieldmodule.findFieldByName(template_coordinates_field_name).castFiniteElement()
 
-        adopt_template_trunk_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+        adopt_template_trunk_coordinates(region, coordinates_field, template_region, template_coordinates_field,
                                          trunk_group_name, unit_conversion_factor)
 
-        fieldmodule = region.getFieldmodule()
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
         structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
         vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
@@ -152,17 +155,21 @@ class SSVToolsTestCase(unittest.TestCase):
         trunk_group_name = "left vagus nerve"
         context = Context("Test")
         region = context.getDefaultRegion()
+        fieldmodule = region.getFieldmodule()
         self.assertEqual(RESULT_OK, region.readFile(data_file_path))
         coordinates_field_name = "coordinates"
+        coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
 
-        tmp_region = region.createRegion()
-        self.assertEqual(RESULT_OK, tmp_region.readFile(data_file_path))
-        tmp_coordinates_field_name = "straight coordinates"
+        template_region = region.createRegion()
+        template_fieldmodule = template_region.getFieldmodule()
+        self.assertEqual(RESULT_OK, template_region.readFile(data_file_path))
+        template_coordinates_field_name = "straight coordinates"
+        template_coordinates_field = \
+            template_fieldmodule.findFieldByName(template_coordinates_field_name).castFiniteElement()
 
-        adopt_template_trunk_coordinates(region, coordinates_field_name, tmp_region, tmp_coordinates_field_name,
+        adopt_template_trunk_coordinates(region, coordinates_field, template_region, template_coordinates_field,
                                          trunk_group_name, unit_conversion_factor)
 
-        fieldmodule = region.getFieldmodule()
         coordinates_field = fieldmodule.findFieldByName(coordinates_field_name).castFiniteElement()
         structure_map, common_branch_map = get_vagus_structure_maps(fieldmodule)
         vagus_trunk_group = get_vagus_trunk_group(fieldmodule)
