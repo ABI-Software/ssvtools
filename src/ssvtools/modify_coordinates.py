@@ -66,40 +66,6 @@ def adopt_template_trunk_coordinates(region, coordinates_field, template_region,
         "adopt_template_trunk_coordinates. Number of trunk elements in data does not match number of trunk elements " \
         "in template vagus."
 
-    # Get radius from data trunk
-    elem_iter = mesh3d.createElementiterator()
-    element = elem_iter.next()
-    element_id = element.getIdentifier()
-    bd2_mag_list = []
-    bd3_mag_list = []
-    bd12_mag_list = []
-    bd13_mag_list = []
-    ln = 2
-
-    # Loop through SSV trunk elements to store radius information
-    while element.isValid() and element_id <= elements_along_template_trunk:
-        eft = element.getElementfieldtemplate(coordinates_field, -1)
-        if element_id == 1:
-            ln = [1, 2]
-        else:
-            ln = [2]
-        for i in range(len(ln)):
-            node = element.getNode(eft, ln[i])
-            fieldcache.setNode(node)
-            _, bd2 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS2, 1, 3)
-            _, bd3 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1, 3)
-            _, bd12 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
-            _, bd13 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
-
-            bd12_signed_mag = dot(bd12, normalize(bd2))
-            bd13_signed_mag = dot(bd13, normalize(bd3))
-            bd2_mag_list.append(magnitude(bd2))
-            bd3_mag_list.append(magnitude(bd3))
-            bd12_mag_list.append(bd12_signed_mag)
-            bd13_mag_list.append(bd13_signed_mag)
-        element = elem_iter.next()
-        element_id = element.getIdentifier()
-
     # Read in coordinates of the nodes in template trunk group to the template region
     sir = template_region.createStreaminformationRegion()
     srm = sir.createStreamresourceMemory()
@@ -138,31 +104,60 @@ def adopt_template_trunk_coordinates(region, coordinates_field, template_region,
                     # get radius and rate of change of radius of template trunk
                     template_node = template_element.getNode(template_eft, ln[i])
                     template_fieldcache.setNode(template_node)
-                    _, bx = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                         Node.VALUE_LABEL_VALUE, 1, 3)
-                    _, bd1 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                          Node.VALUE_LABEL_D_DS1, 1, 3)
-                    _, bd2 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                          Node.VALUE_LABEL_D_DS2, 1, 3)
-                    _, bd3 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                          Node.VALUE_LABEL_D_DS3, 1, 3)
-                    _, bd12 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                           Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
-                    _, bd13 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
-                                                                           Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
+                    _, template_x = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                 Node.VALUE_LABEL_VALUE, 1, 3)
+                    _, template_d1 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                  Node.VALUE_LABEL_D_DS1, 1, 3)
+                    _, template_d2 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                  Node.VALUE_LABEL_D_DS2, 1, 3)
+                    _, template_d3 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                  Node.VALUE_LABEL_D_DS3, 1, 3)
+                    _, template_d12 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                   Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
+                    _, template_d13 = template_coordinates_field.getNodeParameters(template_fieldcache, -1,
+                                                                                   Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
 
                     node = element.getNode(eft, ln[i])
-                    d12 = mult(normalize(bd2), unit_conversion_factor * bd12_mag_list[count])
-                    d13 = mult(normalize(bd3), unit_conversion_factor * bd13_mag_list[count])
+                    template_dir1 = normalize(template_d1)
+
+                    # Get trunk values for SSV
                     fieldcache.setNode(node)
-                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_VALUE, 1, bx)
-                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS1, 1, bd1)
+                    _, bd2 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS2, 1, 3)
+                    _, bd3 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1, 3)
+                    _, bd12 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, 3)
+                    _, bd13 = coordinates_field.getNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, 3)
+                    bd12_signed_mag = dot(bd12, normalize(bd2))
+                    bd13_signed_mag = dot(bd13, normalize(bd3))
+
+                    template_normal12 = normalize(cross(template_d1, template_d2))
+                    # ad = rate of change of twist angle radians w.r.t. xi1:
+                    template_ad12 = dot(template_normal12, template_d12) / magnitude(template_d2)
+                    # rate of change of longitudinal curvature
+                    template_cd12 = dot(template_dir1, template_d12) / magnitude(template_d2)
+                    d12 = add(add(mult(normalize(template_d2), unit_conversion_factor * bd12_signed_mag),
+                                  mult(template_normal12,
+                                       unit_conversion_factor * magnitude(bd2) * template_ad12)),
+                              mult(template_dir1, unit_conversion_factor * magnitude(bd2) * template_cd12))
+
+                    template_normal13 = normalize(cross(template_d1, template_d3))
+                    # ad = rate of change of twist angle radians w.r.t. xi1:
+                    template_ad13 = dot(template_normal13, template_d13) / magnitude(template_d3)
+                    # rate of change of longitudinal curvature
+                    template_cd13 = dot(template_dir1, template_d13) / magnitude(template_d3)
+                    d13 = add(add(mult(normalize(template_d3), unit_conversion_factor * bd13_signed_mag),
+                                  mult(template_normal13,
+                                       unit_conversion_factor * magnitude(bd3) * template_ad13)),
+                              mult(template_dir1, unit_conversion_factor * magnitude(bd3) * template_cd13))
+
+                    # Set new trunk values for SSV
+                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_VALUE, 1, template_x)
+                    coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS1, 1, template_d1)
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS2, 1,
-                                                        set_magnitude(bd2, unit_conversion_factor *
-                                                                      bd2_mag_list[count]))
+                                                        set_magnitude(template_d2, unit_conversion_factor *
+                                                                      magnitude(bd2)))
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D_DS3, 1,
-                                                        set_magnitude(bd3, unit_conversion_factor *
-                                                                      bd3_mag_list[count]))
+                                                        set_magnitude(template_d3, unit_conversion_factor *
+                                                                      magnitude(bd3)))
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS2, 1, d12)
                     coordinates_field.setNodeParameters(fieldcache, -1, Node.VALUE_LABEL_D2_DS1DS3, 1, d13)
                     count += 1
