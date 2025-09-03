@@ -3,12 +3,15 @@ Utility functions for querying structure of SPARC subject-specific nerve scaffol
 including trunk information, branch positions and orientations, and level marker locations.
 """
 import logging
+import math
+import os
 import re
 
 from cmlibs.maths.vectorops import normalize
 from cmlibs.utils.zinc.field import get_group_list
 from cmlibs.utils.zinc.general import ChangeManager
 from cmlibs.zinc.field import Field
+from cmlibs.zinc.node import Node
 from cmlibs.zinc.fieldmodule import Fieldmodule
 
 
